@@ -90,9 +90,10 @@ def cycle_expansion_with_regret(nodes, starting_node_index=0):
 
 def main():
     nodes = read_data("./data")
-    print(nearest_neighbour(nodes.copy()))
-    # cycle_expansion(nodes.copy())
-    # cycle_expansion_with_regret(nodes.copy())
+    for starting_index in range(0, len(nodes)):
+        print(nearest_neighbour(nodes.copy(), starting_index)[1])
+        # cycle_expansion(nodes.copy(), starting_index)
+        # cycle_expansion_with_regret(nodes.copy(), starting_index)
 
 
 main()
