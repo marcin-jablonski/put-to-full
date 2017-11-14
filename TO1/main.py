@@ -1,6 +1,6 @@
 import numpy as np
 import os
-
+import math
 
 COST_WEIGHT = 5
 
@@ -42,8 +42,42 @@ def read_data(path):
     return nodes
 
 
+def distance(node1, node2):
+    return math.sqrt(pow(node1.x - node2.x, 2) + pow(node1.y - node2.y, 2))
+
+
+def find_nearest_neighbour(current_node, available_nodes):
+    best_node = None
+    best_node_result = None
+    for node in available_nodes:
+        cost = distance(current_node, node) * COST_WEIGHT
+        node_result = node.gain - cost
+        if best_node is None or node_result > best_node_result:
+            best_node = node
+            best_node_result = node_result
+    return best_node, best_node_result
+
+
 def nearest_neighbour(nodes, starting_node_index=0):
-    raise NotImplementedError
+    current_node = nodes[starting_node_index]
+    cycle = [current_node]
+    cycle_values = [current_node.gain]
+    nodes.remove(current_node)
+
+    while True:
+        next_node, next_node_result = find_nearest_neighbour(current_node, nodes)
+
+        if next_node is None or next_node_result < 0:
+            break
+
+        nodes.remove(next_node)
+        cycle.append(next_node)
+        cycle_values.append(next_node_result)
+        current_node = next_node
+
+    cycle_values.append(distance(cycle[0], cycle[-1]) * COST_WEIGHT)
+    final_value = sum(cycle_values)
+    return cycle, final_value
 
 
 def cycle_expansion(nodes, starting_node_index=0):
@@ -56,9 +90,9 @@ def cycle_expansion_with_regret(nodes, starting_node_index=0):
 
 def main():
     nodes = read_data("./data")
-    nearest_neighbour(nodes.copy())
-    cycle_expansion(nodes.copy())
-    cycle_expansion_with_regret(nodes.copy())
+    print(nearest_neighbour(nodes.copy()))
+    # cycle_expansion(nodes.copy())
+    # cycle_expansion_with_regret(nodes.copy())
 
 
 main()
