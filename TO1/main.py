@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 COST_WEIGHT = 5
 
+
 class Node:
     id = int
     x = float
@@ -111,7 +112,7 @@ def cycle_expansion(nodes, starting_node_index=0):
 
         nodes.remove(next_node)
         cycle_values.append(next_node_result)
-        cycle.insert(cycle.index(edge[1]), next_node)
+        cycle.insert(cycle[1::].index(edge[1]) + 1, next_node)
 
     final_value = sum(cycle_values)
     return cycle, final_value
@@ -145,15 +146,17 @@ def main():
     best_solution = None
     best_result = None
     for starting_index in range(0, len(nodes)):
-        # solution = nearest_neighbour(nodes.copy(), starting_index)
-        solution = cycle_expansion(nodes.copy(), starting_index)
+        solution = nearest_neighbour(nodes.copy(), starting_index)
+        #solution = cycle_expansion(nodes.copy(), starting_index)
         if best_solution is None or solution[1] > best_result:
             best_solution = solution[0]
             best_result = solution[1]
-        # print(nearest_neighbour(nodes.copy(), starting_index)[1])
-        # print(cycle_expansion(nodes.copy(), starting_index)[1])
-        # cycle_expansion_with_regret(nodes.copy(), starting_index)
-    print_result(nodes, best_solution, best_result, 'Cycle expansion')
+    # print(nearest_neighbour(nodes.copy(), starting_index)[1])
+    # print(cycle_expansion(nodes.copy(), starting_index)[1])
+    # cycle_expansion_with_regret(nodes.copy(), starting_index)
+    print(list(map(lambda node: node.id, best_solution)))
+    #print_result(nodes, best_solution, best_result, 'Cycle expansion')
+    print_result(nodes, best_solution, best_result, 'Nearest neighbour')
 
 
 main()
