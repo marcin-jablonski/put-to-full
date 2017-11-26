@@ -2,7 +2,9 @@ import numpy as np
 import os
 import math
 import matplotlib.pyplot as plt
-
+import time
+import random
+from random import randint
 COST_WEIGHT = 5
 
 
@@ -201,21 +203,21 @@ def print_result(nodes, result_nodes, result, title):
     plt.show()
 
 
-def bestAddNode(available_nodes, cycle):
-    next_node, next_node_result, edge = find_nearest_expansion(available_nodes, cycle)
-    return next_node, next_node_result, edge
+def bestRemoveNode(cycle):
+    starting_node = cycle[0]
+    starting_gain = distance(cycle[0], cycle[1]) * COST_WEIGHT + distance(cycle[0], cycle[-2]) * COST_WEIGHT
+    starting_result = starting_gain - cycle[0].gain - distance(cycle[-2], cycle[1]) * COST_WEIGHT
 
-def bestRemoveNode(available_nodes, cycle):
-    best_node = None
-    best_node_result = None
+    best_node = starting_node
+    best_node_result = starting_result
+
     for i in range(1, len(cycle) - 1):
-        distance_gain = distance(cycle[i-1], cycle[i])* COST_WEIGHT + distance(cycle[i+1], cycle[i]) * COST_WEIGHT
-        node_result = distance_gain - cycle[i].gain
+        distance_gain = distance(cycle[i-1], cycle[i]) * COST_WEIGHT + distance(cycle[i+1], cycle[i]) * COST_WEIGHT
+        node_result = distance_gain - cycle[i].gain - distance(cycle[i-1], cycle[i+1]) * COST_WEIGHT
         if best_node is None or node_result > best_node_result:
             best_node = cycle[i]
             best_node_result = node_result
 
-    #1,3,4,2,1
     return best_node, best_node_result
 
 def reverseNodes(nodes, node1, node2):
@@ -223,7 +225,9 @@ def reverseNodes(nodes, node1, node2):
     nodes[n2], nodes[n1] = nodes[n1], nodes[n2]
     return nodes
 
-def bestEdgeSwap(available_nodes, cycle):
+def bestEdgeSwap(cycle):
+    if len(cycle) - 1 <= 3:
+        return None, -1
     best_swap_result = None
     best_cycle = None
     for i in range(1, len(cycle) - 3):
@@ -236,6 +240,7 @@ def bestEdgeSwap(available_nodes, cycle):
             after_delta_around_node2 = distance(swaped_cycle[j-1], swaped_cycle[j]) + distance(swaped_cycle[j], swaped_cycle[j+1])
             after_delta_gain = (after_delta_around_node1 + after_delta_around_node2) * COST_WEIGHT
             swap_result = before_delta_gain - after_delta_gain
+
             if best_swap_result is None or best_swap_result < swap_result:
                 best_swap_result = swap_result
                 best_cycle = swaped_cycle
@@ -243,15 +248,14 @@ def bestEdgeSwap(available_nodes, cycle):
 
 
 
-def findBestLocal(available_nodes, cycle):
-    #find solution
-    #current_cycle_values = [] #to do
-    next_node, next_node_result, edge = bestAddNode(available_nodes.copy(), cycle.copy())
-    #node_to_remove, remove_node_result = bestRemoveNode(available_nodes.copy(), cycle.copy())
-    new_cycle, swap_nodes_result = bestEdgeSwap(available_nodes.copy(), cycle.copy())
-
-    #results = [next_node_result, remove_node_result, swap_nodes_result]
-    results = [next_node_result, -1, swap_nodes_result]
+def findBestLocal(available_nodes, cycle, times):
+    start = time.time()
+    next_node, next_node_result, edge = find_nearest_expansion(available_nodes.copy(),cycle.copy())
+    node_to_remove, remove_node_result = bestRemoveNode(cycle.copy())
+    new_cycle, swap_nodes_result = bestEdgeSwap(cycle.copy())
+    end = time.time()
+    times.append(end-start)
+    results = [next_node_result, remove_node_result, swap_nodes_result]
     best_local = np.argmax(results)
 
     if results[best_local] < 0:
@@ -261,21 +265,24 @@ def findBestLocal(available_nodes, cycle):
             cycle.insert(cycle[1::].index(edge[1]) + 1, next_node)
             return cycle, next_node_result, next_node, 1
         elif best_local == 1: #remove Node
-            del cycle[cycle[1::].index(node_to_remove)+1]
-            return cycle, remove_node_result, remove_node_result, 2
+            if node_to_remove == cycle[0]:
+                cycle.remove(node_to_remove)
+                cycle.remove(node_to_remove)
+                cycle.append(cycle[0])
+            else:
+                del cycle[cycle[1::].index(node_to_remove)+1]
+            return cycle, remove_node_result, node_to_remove, 2
         else: #Swap edges
             return new_cycle, swap_nodes_result, None, 3
 
 
 
-    #find max(next_node_result,remove_node_result,swap_nodes_result)
-    #add to cycle_values max and create new cycle
-
 def enhanceSolutionWithLocals(cycle, availableNodes, cycle_values):
     enhanced_cycle = cycle
     nodes = availableNodes
+    times = []
     while True:
-        new_cycle, delta, new_node, local_type = findBestLocal(nodes, enhanced_cycle)
+        new_cycle, delta, new_node, local_type = findBestLocal(nodes, enhanced_cycle, times)
         if new_cycle is not None:
             enhanced_cycle = new_cycle
             cycle_values += delta
@@ -286,19 +293,37 @@ def enhanceSolutionWithLocals(cycle, availableNodes, cycle_values):
         else:
             break
 
-    return enhanced_cycle, cycle_values
+    return enhanced_cycle, cycle_values, times
+
+
+def generateRandomSolution(nodes):
+    no_of_nodes = randint(0, 98)
+    cycle = nodes[0:no_of_nodes]
+    random.shuffle(cycle)
+    cycle.append(cycle[0])
+    cycle_values = 0
+    for i in range(0, len(cycle) - 1):
+        cycle_values += cycle[i].gain - distance(cycle[i], cycle[i+1]) * COST_WEIGHT
+
+    return cycle, cycle_values
 
 def main():
     nodes = read_data("./data")
     best_nearest_neighbour_solution = None
     best_nearest_neighbour_result = None
     nearest_neighbour_results = []
+    #solution = generateRandomSolution(nodes.copy())
+
+    for starting_index in range(0, len(nodes)):
+        #solution = nearest_neighbour(nodes.copy(), starting_index)
+        #solution = cycle_expansion(nodes.copy(), starting_index)
+        #solution = cycle_expansion_with_regret(nodes.copy(), starting_index)
+        solution = nearest_neighbour(nodes.copy(), starting_index)
+        enhanced_solution, enhanced_cycle_values, times = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
+        print('starting:'+str(starting_index) +' fixed:' + str(int(enhanced_cycle_values - solution[1]) )+ '  time:'+ str(sum(times)))
 
 
-    solution = nearest_neighbour(nodes.copy(), 7)
-    print(solution[1])
-    enhanced_solution, enhenced_cycle_values = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy())-set(solution[0])), solution[1])
-    print_result(nodes, enhanced_solution, enhenced_cycle_values, 'Locals')
+    #print_result(nodes, enhanced_solution, enhanced_cycle_values, 'Locals')
 
     #best_nearest_neighbour_solution = solution[0]
     #best_nearest_neighbour_result = solution[1]
