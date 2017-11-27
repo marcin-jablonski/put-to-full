@@ -222,12 +222,19 @@ def bestRemoveNode(cycle):
 
 
 def best_edge_swap(cycle):
-    best_swap_result = None
+    best_swap_result = -float("inf")
     best_swapped_cycle = None
+
+    if len(cycle) - 1 <= 3:
+        return best_swapped_cycle, best_swap_result
+
     for i in range(1, len(cycle) - 2):
         for j in range(i+1, len(cycle) - 1):
+            if i == 1 and j == len(cycle) - 2:
+                continue
+
             total_change = distance(cycle[i-1], cycle[i]) - distance(cycle[i], cycle[j+1]) + distance(cycle[j + 1], cycle[j]) - distance(cycle[j], cycle[i - 1])
-            total_change += COST_WEIGHT
+            total_change *= COST_WEIGHT
             swapped_cycle = cycle.copy()
             swapped_cycle[i:j + 1] = list(reversed(swapped_cycle[i:j + 1]))
 
@@ -286,7 +293,7 @@ def enhanceSolutionWithLocals(cycle, availableNodes, cycle_values):
 
 
 def generateRandomSolution(nodes):
-    no_of_nodes = randint(0, 98)
+    no_of_nodes = randint(1, 98)
     cycle = nodes[0:no_of_nodes]
     random.shuffle(cycle)
     cycle.append(cycle[0])
@@ -318,6 +325,7 @@ def main():
 
     for starting_index in range(0, len(nodes)):
         print(starting_index)
+        print('NN')
         solution = nearest_neighbour(nodes.copy(), starting_index)
         locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
         nearest_neighbour_results.append(locals_solution[1])
@@ -326,6 +334,7 @@ def main():
             best_nearest_neighbour_solution = locals_solution[0]
             best_nearest_neighbour_result = locals_solution[1]
 
+        print('CE')
         solution = cycle_expansion(nodes.copy(), starting_index)
         locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
         cycle_expansion_results.append(locals_solution[1])
@@ -334,6 +343,7 @@ def main():
             best_cycle_expansion_solution = locals_solution[0]
             best_cycle_expansion_result = locals_solution[1]
 
+        print('CE+R')
         solution = cycle_expansion_with_regret(nodes.copy(), starting_index)
         locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
         cycle_expansion_with_regret_results.append(locals_solution[1])
@@ -342,6 +352,7 @@ def main():
             best_cycle_expansion_with_regret_solution = locals_solution[0]
             best_cycle_expansion_with_regret_result = locals_solution[1]
 
+        print('RAND')
         solution = generateRandomSolution(nodes.copy())
         locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
         random_results.append(locals_solution[1])
