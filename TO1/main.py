@@ -220,39 +220,29 @@ def bestRemoveNode(cycle):
 
     return best_node, best_node_result
 
-def reverseNodes(nodes, node1, node2):
-    n1, n2 = nodes[1:-1].index(node1) + 1, nodes[1:-1].index(node2) + 1
-    nodes[n2], nodes[n1] = nodes[n1], nodes[n2]
-    return nodes
 
-def bestEdgeSwap(cycle):
-    if len(cycle) - 1 <= 3:
-        return None, -1
+def best_edge_swap(cycle):
     best_swap_result = None
-    best_cycle = None
-    for i in range(1, len(cycle) - 3):
-        for j in range(i + 1, len(cycle) - 2):
-            before_delta_around_node1 = distance(cycle[i-1], cycle[i]) + distance(cycle[i], cycle[i+1])
-            before_delta_around_node2 = distance(cycle[j-1], cycle[j]) + distance(cycle[j], cycle[j+1])
-            before_delta_gain = (before_delta_around_node1 + before_delta_around_node2) * COST_WEIGHT
-            swaped_cycle = reverseNodes(cycle.copy(), cycle[i], cycle[j])
-            after_delta_around_node1 = distance(swaped_cycle[i-1], swaped_cycle[i]) + distance(swaped_cycle[i], swaped_cycle[i+1])
-            after_delta_around_node2 = distance(swaped_cycle[j-1], swaped_cycle[j]) + distance(swaped_cycle[j], swaped_cycle[j+1])
-            after_delta_gain = (after_delta_around_node1 + after_delta_around_node2) * COST_WEIGHT
-            swap_result = before_delta_gain - after_delta_gain
+    best_swapped_cycle = None
+    for i in range(1, len(cycle) - 2):
+        for j in range(i+1, len(cycle) - 1):
+            total_change = distance(cycle[i-1], cycle[i]) - distance(cycle[i], cycle[j+1]) + distance(cycle[j + 1], cycle[j]) - distance(cycle[j], cycle[i - 1])
+            total_change += COST_WEIGHT
+            swapped_cycle = cycle.copy()
+            swapped_cycle[i:j + 1] = list(reversed(swapped_cycle[i:j + 1]))
 
-            if best_swap_result is None or best_swap_result < swap_result:
-                best_swap_result = swap_result
-                best_cycle = swaped_cycle
-    return best_cycle, best_swap_result
+            if best_swap_result is None or best_swap_result < total_change:
+                best_swap_result = total_change
+                best_swapped_cycle = swapped_cycle
 
+    return best_swapped_cycle, best_swap_result
 
 
 def findBestLocal(available_nodes, cycle, times):
     start = time.time()
     next_node, next_node_result, edge = find_nearest_expansion(available_nodes.copy(),cycle.copy())
     node_to_remove, remove_node_result = bestRemoveNode(cycle.copy())
-    new_cycle, swap_nodes_result = bestEdgeSwap(cycle.copy())
+    new_cycle, swap_nodes_result = best_edge_swap(cycle.copy())
     end = time.time()
     times.append(end-start)
     results = [next_node_result, remove_node_result, swap_nodes_result]
@@ -274,7 +264,6 @@ def findBestLocal(available_nodes, cycle, times):
             return cycle, remove_node_result, node_to_remove, 2
         else: #Swap edges
             return new_cycle, swap_nodes_result, None, 3
-
 
 
 def enhanceSolutionWithLocals(cycle, availableNodes, cycle_values):
@@ -307,67 +296,72 @@ def generateRandomSolution(nodes):
 
     return cycle, cycle_values
 
+
 def main():
     nodes = read_data("./data")
     best_nearest_neighbour_solution = None
     best_nearest_neighbour_result = None
+    nearest_neighbour_times = []
     nearest_neighbour_results = []
-    #solution = generateRandomSolution(nodes.copy())
+    best_cycle_expansion_solution = None
+    best_cycle_expansion_result = None
+    cycle_expansion_times = []
+    cycle_expansion_results = []
+    best_cycle_expansion_with_regret_solution = None
+    best_cycle_expansion_with_regret_result = None
+    cycle_expansion_with_regret_times = []
+    cycle_expansion_with_regret_results = []
+    best_random_solution = None
+    best_random_result = None
+    random_times = []
+    random_results = []
 
     for starting_index in range(0, len(nodes)):
-        #solution = nearest_neighbour(nodes.copy(), starting_index)
-        #solution = cycle_expansion(nodes.copy(), starting_index)
-        #solution = cycle_expansion_with_regret(nodes.copy(), starting_index)
+        print(starting_index)
         solution = nearest_neighbour(nodes.copy(), starting_index)
-        enhanced_solution, enhanced_cycle_values, times = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
-        print('starting:'+str(starting_index) +' fixed:' + str(int(enhanced_cycle_values - solution[1]) )+ '  time:'+ str(sum(times)))
+        locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
+        nearest_neighbour_results.append(locals_solution[1])
+        nearest_neighbour_times.append(sum(locals_solution[2]))
+        if best_nearest_neighbour_solution is None or locals_solution[1] > best_nearest_neighbour_result:
+            best_nearest_neighbour_solution = locals_solution[0]
+            best_nearest_neighbour_result = locals_solution[1]
 
+        solution = cycle_expansion(nodes.copy(), starting_index)
+        locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
+        cycle_expansion_results.append(locals_solution[1])
+        cycle_expansion_times.append(sum(locals_solution[2]))
+        if best_cycle_expansion_solution is None or locals_solution[1] > best_cycle_expansion_result:
+            best_cycle_expansion_solution = locals_solution[0]
+            best_cycle_expansion_result = locals_solution[1]
 
-    #print_result(nodes, enhanced_solution, enhanced_cycle_values, 'Locals')
+        solution = cycle_expansion_with_regret(nodes.copy(), starting_index)
+        locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
+        cycle_expansion_with_regret_results.append(locals_solution[1])
+        cycle_expansion_with_regret_times.append(sum(locals_solution[2]))
+        if best_cycle_expansion_with_regret_solution is None or locals_solution[1] > best_cycle_expansion_with_regret_result:
+            best_cycle_expansion_with_regret_solution = locals_solution[0]
+            best_cycle_expansion_with_regret_result = locals_solution[1]
 
-    #best_nearest_neighbour_solution = solution[0]
-    #best_nearest_neighbour_result = solution[1]
+        solution = generateRandomSolution(nodes.copy())
+        locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
+        random_results.append(locals_solution[1])
+        random_times.append(sum(locals_solution[2]))
+        if best_random_solution is None or locals_solution[1] > best_random_result:
+            best_random_solution = locals_solution[0]
+            best_random_result = locals_solution[1]
 
-
-
-    #print_result(nodes, best_nearest_neighbour_solution, best_nearest_neighbour_result, 'Nearest neighbour')
-
-
-    # best_cycle_expansion_solution = None
-    # best_cycle_expansion_result = None
-    # cycle_expansion_results = []
-    # best_cycle_expansion_with_regret_solution = None
-    # best_cycle_expansion_with_regret_result = None
-    # cycle_expansion_with_regret_results = []
-    #
-    # for starting_index in range(0, len(nodes)):
-    #     solution = nearest_neighbour(nodes.copy(), starting_index)
-    #     nearest_neighbour_results.append(solution[1])
-    #     if best_nearest_neighbour_solution is None or solution[1] > best_nearest_neighbour_result:
-    #         best_nearest_neighbour_solution = solution[0]
-    #         best_nearest_neighbour_result = solution[1]
-    #
-    #     solution = cycle_expansion(nodes.copy(), starting_index)
-    #     cycle_expansion_results.append(solution[1])
-    #     if best_cycle_expansion_solution is None or solution[1] > best_cycle_expansion_result:
-    #         best_cycle_expansion_solution = solution[0]
-    #         best_cycle_expansion_result = solution[1]
-    #
-    #     solution = cycle_expansion_with_regret(nodes.copy(), starting_index)
-    #     cycle_expansion_with_regret_results.append(solution[1])
-    #     if best_cycle_expansion_with_regret_solution is None or solution[1] > best_cycle_expansion_with_regret_result:
-    #         best_cycle_expansion_with_regret_solution = solution[0]
-    #         best_cycle_expansion_with_regret_result = solution[1]
-
-    # print_result(nodes, best_nearest_neighbour_solution, best_nearest_neighbour_result, 'Nearest neighbour')
-    # print('Nearest neigbour - best: {}, worst: {}, average: {}'.format(best_nearest_neighbour_result, min(nearest_neighbour_results), np.mean(nearest_neighbour_results)))
-    # print(list(map(lambda node: int(node.id) , best_nearest_neighbour_solution)))
-    # print_result(nodes, best_cycle_expansion_solution, best_cycle_expansion_result, 'Cycle expansion')
-    # print('Cycle expansion - best: {}, worst: {}, average: {}'.format(best_cycle_expansion_result, min(cycle_expansion_results), np.mean(cycle_expansion_results)))
-    # print(list(map(lambda node: int(node.id), best_cycle_expansion_solution)))
-    # print_result(nodes, best_cycle_expansion_with_regret_solution, best_cycle_expansion_with_regret_result, 'Cycle expansion with regret')
-    # print('Cycle expansion with regret - best: {}, worst: {}, average: {}'.format(best_cycle_expansion_with_regret_result, min(cycle_expansion_with_regret_results), np.mean(cycle_expansion_with_regret_results)))
-    # print(list(map(lambda node: int(node.id) , best_cycle_expansion_with_regret_solution)))
+    print_result(nodes, best_nearest_neighbour_solution, best_nearest_neighbour_result, 'Nearest neighbour')
+    print('Nearest neigbour - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_nearest_neighbour_result, min(nearest_neighbour_results), np.mean(nearest_neighbour_results), min(nearest_neighbour_times), max(nearest_neighbour_times), np.mean(nearest_neighbour_times)))
+    print(list(map(lambda node: int(node.id), best_nearest_neighbour_solution)))
+    print_result(nodes, best_cycle_expansion_solution, best_cycle_expansion_result, 'Cycle expansion')
+    print('Cycle expansion - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_cycle_expansion_result, min(cycle_expansion_results), np.mean(cycle_expansion_results), min(cycle_expansion_times), max(cycle_expansion_times), np.mean(cycle_expansion_times)))
+    print(list(map(lambda node: int(node.id), best_cycle_expansion_solution)))
+    print_result(nodes, best_cycle_expansion_with_regret_solution, best_cycle_expansion_with_regret_result, 'Cycle expansion with regret')
+    print('Cycle expansion with regret - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_cycle_expansion_with_regret_result, min(cycle_expansion_with_regret_results), np.mean(cycle_expansion_with_regret_results), min(cycle_expansion_with_regret_times), max(cycle_expansion_with_regret_times), np.mean(cycle_expansion_with_regret_times)))
+    print(list(map(lambda node: int(node.id) , best_cycle_expansion_with_regret_solution)))
+    print_result(nodes, best_cycle_expansion_with_regret_solution, best_cycle_expansion_with_regret_result,'Random')
+    print('Random - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_random_result, min(random_results),np.mean(random_results), min(random_times),max(random_times), np.mean(random_times)))
+    print(list(map(lambda node: int(node.id), best_random_solution)))
 
 
 main()
