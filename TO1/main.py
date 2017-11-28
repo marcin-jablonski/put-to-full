@@ -78,7 +78,7 @@ def nearest_neighbour(nodes, starting_node_index=0):
         cycle_values.append(next_node_result)
         current_node = next_node
 
-    cycle_values.append(distance(cycle[0], cycle[-1]) * COST_WEIGHT)
+    cycle_values.append(-distance(cycle[0], cycle[-1]) * COST_WEIGHT)
     cycle.append(cycle[0])
     final_value = sum(cycle_values)
     return cycle, final_value
@@ -158,9 +158,9 @@ def find_best_regret_expansion(nodes, cycle, cycle_values):
 
 
 def insert_node_with_breaking_edge(node, edge_index, cycle, cycle_values):
-    cycle.insert(edge_index + 1, node)
     del cycle_values[2 * edge_index]
     cycle_values[2 * edge_index:2 * edge_index] = [-distance(node, cycle[edge_index]) * COST_WEIGHT, node.gain, -distance(node, cycle[edge_index + 1]) * COST_WEIGHT]
+    cycle.insert(edge_index + 1, node)
     return cycle, cycle_values
 
 
