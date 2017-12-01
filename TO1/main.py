@@ -334,7 +334,7 @@ def multiple_start_local_search(nodes):
     for i in range(0, 100):
         print('MS LS completed: ' + str(100*i/100)+" %")
         random_solution = generateRandomSolution(nodes.copy())
-        enhanced_solution = enhanceSolutionWithLocals(random_solution[0], list(set(nodes.copy()) - set(random_solution[0])), random_solution[1])
+        enhanced_solution = enhanceSolutionWithLocals(random_solution[0].copy(), list(set(nodes.copy()) - set(random_solution[0])), random_solution[1])
         if best_solution is None or enhanced_solution[1] > best_solution[1]:
             best_solution = enhanced_solution
     end = time.time()
