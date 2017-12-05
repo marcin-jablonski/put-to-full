@@ -441,6 +441,7 @@ def calculate_node_swap(cycle, i, j):
 
     return swaped_cycle, swap_result
 
+
 def simulated_annealing(nodes):
     start = time.time()
     L = 1000
@@ -477,6 +478,89 @@ def simulated_annealing(nodes):
 
     duration = time.time() - start
     return best_global_solution, best_global_result, duration
+
+flatten = lambda l: [item for sublist in l for item in sublist]
+
+
+def rewrite_cycle_to_start_at(cycle, starting_node):
+    index = cycle.index(starting_node)
+
+    if index == 0:
+        return cycle
+
+    cycle_first_half = cycle[index:]
+    cycle_second_half = cycle[1:index]
+    new_cycle = cycle_first_half + cycle_second_half + [cycle_first_half[0]]
+    return new_cycle
+
+
+def unify_cycles(cycle_1, cycle_2):
+    for node in cycle_1:
+        if node in cycle_2:
+            new_cycle_1 = rewrite_cycle_to_start_at(cycle_1, node)
+            new_cycle_2 = rewrite_cycle_to_start_at(cycle_2, node)
+            return new_cycle_1, new_cycle_2
+    #TODO this might crash
+    return None
+
+
+def is_sublist(list, sublist):
+    return ''.join(map(str, [x.id for x in sublist])) in ''.join(map(str, [x.id for x in list])) or ''.join(map(str, [x.id for x in sublist]))[::-1] in ''.join(map(str, [x.id for x in list]))
+
+
+def range_is_already_covered(found_ranges, new_range):
+    for found_range in found_ranges:
+        if new_range[0] >= found_range[0] and new_range[1] <= found_range[1]:
+            return True
+    return False
+
+
+def find_common_paths(cycle_1, cycle_2):
+    cycle_1, cycle_2 = unify_cycles(cycle_1, cycle_2)
+    common_parts_ranges = []
+
+    for starting_index in range(len(cycle_1) - 1):
+        for end_index in range(len(cycle_1) - 1, starting_index, -1):
+            cycle_1_part = cycle_1[starting_index:end_index]
+            new_range = (starting_index, end_index)
+            if is_sublist(cycle_2, cycle_1_part) and not range_is_already_covered(common_parts_ranges, new_range):
+                common_parts_ranges.append(new_range)
+                break
+
+    return [cycle_1[found_range[0]:found_range[1]] for found_range in common_parts_ranges]
+
+
+def get_unused_nodes(cycle_1, cycle_2, common_paths):
+    common_paths_nodes = set(flatten(common_paths))
+
+    all_nodes = set(cycle_1) | set(cycle_2)
+
+    return [[x] for x in list(all_nodes - common_paths_nodes)]
+
+
+def recombine(cycle_1, cycle_2):
+    common_paths = find_common_paths(cycle_1, cycle_2)
+
+    additional_nodes_count = random.randint(min(len(cycle_1) - 1, len(cycle_2) - 1),
+                                            max(len(cycle_1) - 1, len(cycle_2) - 1)) - len(flatten(common_paths))
+
+    unused = get_unused_nodes(cycle_1, cycle_2, common_paths)
+    random.shuffle(unused)
+
+    unused_to_add = unused[:additional_nodes_count]
+
+    new_cycle_parts = common_paths + unused_to_add
+    random.shuffle(new_cycle_parts)
+
+    for i in range(len(new_cycle_parts)):
+        if len(new_cycle_parts[i]) > 1 and random.choice([True, False]):
+            reversed = new_cycle_parts[i][::-1]
+            new_cycle_parts[i] = reversed
+
+    new_cycle = flatten(new_cycle_parts)
+    new_cycle = new_cycle + [new_cycle[0]]
+
+    return new_cycle
 
 
 def lab_3_results():
@@ -543,7 +627,18 @@ def lab_3_results():
 
 
 def main():
-    lab_3_results()
+    # node_0 = Node(0)
+    # node_1 = Node(1)
+    # node_2 = Node(2)
+    # node_3 = Node(3)
+    # node_4 = Node(4)
+    # cycle_1 = [node_0, node_1, node_2, node_4, node_0]
+    # cycle_2 = [node_1, node_4, node_3, node_2, node_1]
+    # 
+    # result = recombine(cycle_1, cycle_2)
+    # print([x.id for x in result])
+    
+    # lab_3_results()
 
     # nodes = read_data("./data")
     # best_nearest_neighbour_solution = None
