@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import time
 import random
 from random import randint
-COST_WEIGHT = 5
+COST_WEIGHT = 6
 
 
 class Node:
@@ -374,13 +374,16 @@ def get_random_neighbour_solution(nodes, cycle, result):
 
 
 def perturbation(cycle, result):
-    #swap nodes
+    #triple random swap nodes
     if len(cycle) - 1 > 3:
         new_cycle, delta = node_swap(cycle, True)
         cycle_values = result + delta
+        new_cycle, delta = node_swap(new_cycle, True)
+        cycle_values = cycle_values + delta
+        new_cycle, delta = node_swap(new_cycle, True)
+        cycle_values = cycle_values + delta
         return new_cycle, cycle_values
 
-    #TODO
     return cycle, result
 
 
@@ -493,7 +496,7 @@ def lab_3_results():
     best_simulated_annealing_result = None
     simulated_annealing_times = []
 
-    for i in range(0, 20):
+    for i in range(0, 10):
         print('MultipleStart LS')
         solution, duration = multiple_start_local_search(nodes.copy())
         if verify_solution(solution[0], solution[1]) > 1:
@@ -505,10 +508,10 @@ def lab_3_results():
             best_multiple_start_solution = solution[0]
             best_multiple_start_result = solution[1]
 
-    #stop_time = np.mean(multiple_start_times)
-    stop_time = 6
+    stop_time = np.mean(multiple_start_times)
+    #stop_time = 6
 
-    for i in range(0, 20):
+    for i in range(0, 10):
         print('Iterated LS')
         solution = iterated_local_search(nodes.copy(), stop_time)
         if verify_solution(solution[0], solution[1]) > 1:
@@ -518,7 +521,7 @@ def lab_3_results():
             best_iterated_ls_solution = solution[0]
             best_iterated_ls_result = solution[1]
 
-    for i in range(0, 20):
+    for i in range(0, 10):
         print('Simulated annealing LS')
         solution = simulated_annealing(nodes.copy())
         if verify_solution(solution[0], solution[1]) > 1:
