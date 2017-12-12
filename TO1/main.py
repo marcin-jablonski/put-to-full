@@ -691,6 +691,91 @@ def genetic_algorithm(nodes, stop_time):
     return find_best_solution(population)
 
 
+def count_common_nodes(cycle_1, cycle_2):
+    common_nodes = 0
+    for node_1 in cycle_1[:-1]:
+        if node_1 in cycle_2[:-1]:
+            common_nodes += 1
+    return common_nodes
+
+
+def percentage_of_common_nodes(cycle_1, cycle_2):
+    average_no_of_nodes = (len(cycle_1[:-1]) + len(cycle_2[:-1]))/2
+    common_nodes = count_common_nodes(cycle_1, cycle_2)
+    return common_nodes/average_no_of_nodes
+
+
+def count_common_edges(cycle_1, cycle_2):
+    common_edges = 0
+    for i in range(len(cycle_1) - 1):
+        edge = [cycle_1[i], cycle_1[i + 1]]
+        if is_sublist(cycle_2, edge):
+            common_edges += 1
+
+    return common_edges
+
+
+def percentage_of_common_edges(cycle_1, cycle_2):
+    average_no_of_edges = (len(cycle_1) - 1 + len(cycle_2) - 1)/2
+    common_edges = count_common_edges(cycle_1, cycle_2)
+    return common_edges/average_no_of_edges
+
+
+def generate_chart_data(solutions):
+    best_solution = find_best_solution(solutions)[0]
+
+    x = []
+    best_common_nodes_percentages = []
+    best_common_edges_percentages = []
+    average_common_nodes_percentages = []
+    average_common_edges_percentages = []
+
+    for sol_i, solution in enumerate(solutions):
+        solution_value = evaluate_solution(solution)
+        
+        best_common_nodes_percentage = percentage_of_common_nodes(solution, best_solution)
+        best_common_edges_percentage = percentage_of_common_edges(solution, best_solution)
+
+        common_nodes_percentages = []
+        common_edges_percentages = []
+
+        for another_i, another_solution in enumerate(solutions):
+            if another_i != sol_i:
+                another_solution_common_nodes_percentage = percentage_of_common_nodes(solution, another_solution)
+                another_solution_common_edges_percentage = percentage_of_common_edges(solution, another_solution)
+
+                common_nodes_percentages.append(another_solution_common_nodes_percentage)
+                common_edges_percentages.append(another_solution_common_edges_percentage)
+
+        average_common_nodes_percentage = np.mean(common_nodes_percentages)
+        average_common_edges_percentage = np.mean(common_edges_percentages)
+
+        x.append(solution_value)
+        best_common_nodes_percentages.append(best_common_nodes_percentage)
+        best_common_edges_percentages.append(best_common_edges_percentage)
+        average_common_nodes_percentages.append(average_common_nodes_percentage)
+        average_common_edges_percentages.append(average_common_edges_percentage)
+
+    return x, average_common_nodes_percentages, average_common_edges_percentages, best_common_nodes_percentages, best_common_edges_percentages
+
+
+def lab_5_results():
+    node1 = Node(0, 0, 0, 10)
+    node2 = Node(1, 10, 15, 8)
+    node3 = Node(2, -5, 8, 7)
+    node4 = Node(3, -12, 20, 15)
+    node5 = Node(4, 1, 4, 4)
+    node6 = Node(5, 2, 7, 3)
+
+    sol_1 = [node1, node2, node3, node1]
+    sol_2 = [node4, node5, node1, node3, node4]
+    sol_3 = [node6, node4, node5, node6]
+
+    solutions = [sol_1, sol_2]
+
+    print(generate_chart_data(solutions))
+
+
 def lab_3_results():
     nodes = read_data("./data")
     multiple_start_times = []
@@ -815,7 +900,9 @@ def lab_4_results():
 
 
 def main():
-    lab_4_results()
+    lab_5_results()
+    
+    # lab_4_results()
     
     # lab_3_results()
 
