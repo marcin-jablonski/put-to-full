@@ -776,6 +776,66 @@ def lab_5_results():
     print(generate_chart_data(solutions))
 
 
+def lab_4_results():
+    nodes = read_data("./data")
+    multiple_start_times = []
+    multiple_start_results = []
+    best_multiple_start_solution = None
+    best_multiple_start_result = None
+    iterated_ls_results = []
+    best_iterated_ls_solution = None
+    best_iterated_ls_result = None
+    genetic_results = []
+    best_genetic_solution = None
+    best_genetic_result = None
+
+    for i in range(0, 10):
+        print('MultipleStart LS')
+        solution, duration = multiple_start_local_search(nodes.copy())
+        if verify_solution(solution[0], solution[1]) > 1:
+            raise ValueError("Node path verification failed")
+        multiple_start_times.append(duration)
+        multiple_start_results.append(solution[1])
+
+        if best_multiple_start_solution is None or solution[1] > best_multiple_start_result:
+            best_multiple_start_solution = solution[0]
+            best_multiple_start_result = solution[1]
+
+    stop_time = np.mean(multiple_start_times)
+
+    for i in range(0, 10):
+        print('Iterated LS')
+        solution = iterated_local_search(nodes.copy(), stop_time)
+        if verify_solution(solution[0], solution[1]) > 1:
+            raise ValueError("Node path verification failed")
+        iterated_ls_results.append(solution[1])
+        if best_iterated_ls_solution is None or solution[1] > best_iterated_ls_result:
+            best_iterated_ls_solution = solution[0]
+            best_iterated_ls_result = solution[1]
+
+    for i in range(0, 10):
+        print('Genetic')
+        solution = genetic_algorithm(nodes.copy(), stop_time)
+        if verify_solution(solution[0], solution[1]) > 1:
+            raise ValueError("Node path verification failed")
+        genetic_results.append(solution[1])
+        if best_genetic_solution is None or solution[1] > best_genetic_result:
+            best_genetic_solution = solution[0]
+            best_genetic_result = solution[1]
+
+    print_result(nodes, best_multiple_start_solution, best_multiple_start_result, 'MultipleStart LS')
+    print('MultipleStart LS - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_multiple_start_result, min(multiple_start_results), np.mean(multiple_start_results), min(multiple_start_times), max(multiple_start_times), np.mean(multiple_start_times)))
+    print(list(map(lambda node: int(node.id), best_multiple_start_solution)))
+
+    print_result(nodes, best_iterated_ls_solution, best_iterated_ls_result, 'Iterated LS')
+    print('Iterated LS - best: {}, worst: {}, average: {}. Stop time: {}'.format(best_iterated_ls_result, min(iterated_ls_results), np.mean(iterated_ls_results), stop_time))
+    print(list(map(lambda node: int(node.id), best_iterated_ls_solution)))
+
+    print_result(nodes, best_genetic_solution, best_genetic_result, 'Genetic')
+    print('Genetic - best: {}, worst: {}, average: {}. Stop time: {}'.format(best_genetic_result, min(genetic_results), np.mean(genetic_results), stop_time))
+    print(list(map(lambda node: int(node.id), best_genetic_solution)))
+    
+    
 def lab_3_results():
     nodes = read_data("./data")
     multiple_start_times = []
@@ -839,141 +899,85 @@ def lab_3_results():
     print(list(map(lambda node: int(node.id), best_simulated_annealing_solution)))
 
 
-def lab_4_results():
+def lab_2_results():
     nodes = read_data("./data")
-    multiple_start_times = []
-    multiple_start_results = []
-    best_multiple_start_solution = None
-    best_multiple_start_result = None
-    iterated_ls_results = []
-    best_iterated_ls_solution = None
-    best_iterated_ls_result = None
-    genetic_results = []
-    best_genetic_solution = None
-    best_genetic_result = None
+    best_nearest_neighbour_solution = None
+    best_nearest_neighbour_result = None
+    nearest_neighbour_times = []
+    nearest_neighbour_results = []
+    best_cycle_expansion_solution = None
+    best_cycle_expansion_result = None
+    cycle_expansion_times = []
+    cycle_expansion_results = []
+    best_cycle_expansion_with_regret_solution = None
+    best_cycle_expansion_with_regret_result = None
+    cycle_expansion_with_regret_times = []
+    cycle_expansion_with_regret_results = []
+    best_random_solution = None
+    best_random_result = None
+    random_times = []
+    random_results = []
 
-    for i in range(0, 10):
-        print('MultipleStart LS')
-        solution, duration = multiple_start_local_search(nodes.copy())
-        if verify_solution(solution[0], solution[1]) > 1:
-            raise ValueError("Node path verification failed")
-        multiple_start_times.append(duration)
-        multiple_start_results.append(solution[1])
+    for starting_index in range(0, len(nodes)):
+        print(starting_index)
+        print('NN')
+        solution = nearest_neighbour(nodes.copy(), starting_index)
+        locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
+        nearest_neighbour_results.append(locals_solution[1])
+        nearest_neighbour_times.append(sum(locals_solution[2]))
+        if best_nearest_neighbour_solution is None or locals_solution[1] > best_nearest_neighbour_result:
+            best_nearest_neighbour_solution = locals_solution[0]
+            best_nearest_neighbour_result = locals_solution[1]
 
-        if best_multiple_start_solution is None or solution[1] > best_multiple_start_result:
-            best_multiple_start_solution = solution[0]
-            best_multiple_start_result = solution[1]
+        print('CE')
+        solution = cycle_expansion(nodes.copy(), starting_index)
+        locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
+        cycle_expansion_results.append(locals_solution[1])
+        cycle_expansion_times.append(sum(locals_solution[2]))
+        if best_cycle_expansion_solution is None or locals_solution[1] > best_cycle_expansion_result:
+            best_cycle_expansion_solution = locals_solution[0]
+            best_cycle_expansion_result = locals_solution[1]
 
-    stop_time = np.mean(multiple_start_times)
+        print('CE+R')
+        solution = cycle_expansion_with_regret(nodes.copy(), starting_index)
+        locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
+        cycle_expansion_with_regret_results.append(locals_solution[1])
+        cycle_expansion_with_regret_times.append(sum(locals_solution[2]))
+        if best_cycle_expansion_with_regret_solution is None or locals_solution[1] > best_cycle_expansion_with_regret_result:
+            best_cycle_expansion_with_regret_solution = locals_solution[0]
+            best_cycle_expansion_with_regret_result = locals_solution[1]
 
-    for i in range(0, 10):
-        print('Iterated LS')
-        solution = iterated_local_search(nodes.copy(), stop_time)
-        if verify_solution(solution[0], solution[1]) > 1:
-            raise ValueError("Node path verification failed")
-        iterated_ls_results.append(solution[1])
-        if best_iterated_ls_solution is None or solution[1] > best_iterated_ls_result:
-            best_iterated_ls_solution = solution[0]
-            best_iterated_ls_result = solution[1]
+        print('RAND')
+        solution = generateRandomSolution(nodes.copy())
+        locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
+        random_results.append(locals_solution[1])
+        random_times.append(sum(locals_solution[2]))
+        if best_random_solution is None or locals_solution[1] > best_random_result:
+            best_random_solution = locals_solution[0]
+            best_random_result = locals_solution[1]
 
-    for i in range(0, 10):
-        print('Genetic')
-        solution = genetic_algorithm(nodes.copy(), stop_time)
-        if verify_solution(solution[0], solution[1]) > 1:
-            raise ValueError("Node path verification failed")
-        genetic_results.append(solution[1])
-        if best_genetic_solution is None or solution[1] > best_genetic_result:
-            best_genetic_solution = solution[0]
-            best_genetic_result = solution[1]
-
-    print_result(nodes, best_multiple_start_solution, best_multiple_start_result, 'MultipleStart LS')
-    print('MultipleStart LS - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_multiple_start_result, min(multiple_start_results), np.mean(multiple_start_results), min(multiple_start_times), max(multiple_start_times), np.mean(multiple_start_times)))
-    print(list(map(lambda node: int(node.id), best_multiple_start_solution)))
-
-    print_result(nodes, best_iterated_ls_solution, best_iterated_ls_result, 'Iterated LS')
-    print('Iterated LS - best: {}, worst: {}, average: {}. Stop time: {}'.format(best_iterated_ls_result, min(iterated_ls_results), np.mean(iterated_ls_results), stop_time))
-    print(list(map(lambda node: int(node.id), best_iterated_ls_solution)))
-
-    print_result(nodes, best_genetic_solution, best_genetic_result, 'Genetic')
-    print('Genetic - best: {}, worst: {}, average: {}. Stop time: {}'.format(best_genetic_result, min(genetic_results), np.mean(genetic_results), stop_time))
-    print(list(map(lambda node: int(node.id), best_genetic_solution)))
+    print_result(nodes, best_nearest_neighbour_solution, best_nearest_neighbour_result, 'Nearest neighbour')
+    print('Nearest neigbour - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_nearest_neighbour_result, min(nearest_neighbour_results), np.mean(nearest_neighbour_results), min(nearest_neighbour_times), max(nearest_neighbour_times), np.mean(nearest_neighbour_times)))
+    print(list(map(lambda node: int(node.id), best_nearest_neighbour_solution)))
+    print_result(nodes, best_cycle_expansion_solution, best_cycle_expansion_result, 'Cycle expansion')
+    print('Cycle expansion - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_cycle_expansion_result, min(cycle_expansion_results), np.mean(cycle_expansion_results), min(cycle_expansion_times), max(cycle_expansion_times), np.mean(cycle_expansion_times)))
+    print(list(map(lambda node: int(node.id), best_cycle_expansion_solution)))
+    print_result(nodes, best_cycle_expansion_with_regret_solution, best_cycle_expansion_with_regret_result, 'Cycle expansion with regret')
+    print('Cycle expansion with regret - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_cycle_expansion_with_regret_result, min(cycle_expansion_with_regret_results), np.mean(cycle_expansion_with_regret_results), min(cycle_expansion_with_regret_times), max(cycle_expansion_with_regret_times), np.mean(cycle_expansion_with_regret_times)))
+    print(list(map(lambda node: int(node.id) , best_cycle_expansion_with_regret_solution)))
+    print_result(nodes, best_cycle_expansion_with_regret_solution, best_cycle_expansion_with_regret_result,'Random')
+    print('Random - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_random_result, min(random_results),np.mean(random_results), min(random_times),max(random_times), np.mean(random_times)))
+    print(list(map(lambda node: int(node.id), best_random_solution)))
 
 
 def main():
     lab_5_results()
-    
+
     # lab_4_results()
     
     # lab_3_results()
 
-    # nodes = read_data("./data")
-    # best_nearest_neighbour_solution = None
-    # best_nearest_neighbour_result = None
-    # nearest_neighbour_times = []
-    # nearest_neighbour_results = []
-    # best_cycle_expansion_solution = None
-    # best_cycle_expansion_result = None
-    # cycle_expansion_times = []
-    # cycle_expansion_results = []
-    # best_cycle_expansion_with_regret_solution = None
-    # best_cycle_expansion_with_regret_result = None
-    # cycle_expansion_with_regret_times = []
-    # cycle_expansion_with_regret_results = []
-    # best_random_solution = None
-    # best_random_result = None
-    # random_times = []
-    # random_results = []
-
-    # for starting_index in range(0, len(nodes)):
-    #     print(starting_index)
-    #     print('NN')
-    #     solution = nearest_neighbour(nodes.copy(), starting_index)
-    #     locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
-    #     nearest_neighbour_results.append(locals_solution[1])
-    #     nearest_neighbour_times.append(sum(locals_solution[2]))
-    #     if best_nearest_neighbour_solution is None or locals_solution[1] > best_nearest_neighbour_result:
-    #         best_nearest_neighbour_solution = locals_solution[0]
-    #         best_nearest_neighbour_result = locals_solution[1]
-    #
-    #     print('CE')
-    #     solution = cycle_expansion(nodes.copy(), starting_index)
-    #     locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
-    #     cycle_expansion_results.append(locals_solution[1])
-    #     cycle_expansion_times.append(sum(locals_solution[2]))
-    #     if best_cycle_expansion_solution is None or locals_solution[1] > best_cycle_expansion_result:
-    #         best_cycle_expansion_solution = locals_solution[0]
-    #         best_cycle_expansion_result = locals_solution[1]
-    #
-    #     print('CE+R')
-    #     solution = cycle_expansion_with_regret(nodes.copy(), starting_index)
-    #     locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
-    #     cycle_expansion_with_regret_results.append(locals_solution[1])
-    #     cycle_expansion_with_regret_times.append(sum(locals_solution[2]))
-    #     if best_cycle_expansion_with_regret_solution is None or locals_solution[1] > best_cycle_expansion_with_regret_result:
-    #         best_cycle_expansion_with_regret_solution = locals_solution[0]
-    #         best_cycle_expansion_with_regret_result = locals_solution[1]
-    #
-    #     print('RAND')
-    #     solution = generateRandomSolution(nodes.copy())
-    #     locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
-    #     random_results.append(locals_solution[1])
-    #     random_times.append(sum(locals_solution[2]))
-    #     if best_random_solution is None or locals_solution[1] > best_random_result:
-    #         best_random_solution = locals_solution[0]
-    #         best_random_result = locals_solution[1]
-    #
-    # print_result(nodes, best_nearest_neighbour_solution, best_nearest_neighbour_result, 'Nearest neighbour')
-    # print('Nearest neigbour - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_nearest_neighbour_result, min(nearest_neighbour_results), np.mean(nearest_neighbour_results), min(nearest_neighbour_times), max(nearest_neighbour_times), np.mean(nearest_neighbour_times)))
-    # print(list(map(lambda node: int(node.id), best_nearest_neighbour_solution)))
-    # print_result(nodes, best_cycle_expansion_solution, best_cycle_expansion_result, 'Cycle expansion')
-    # print('Cycle expansion - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_cycle_expansion_result, min(cycle_expansion_results), np.mean(cycle_expansion_results), min(cycle_expansion_times), max(cycle_expansion_times), np.mean(cycle_expansion_times)))
-    # print(list(map(lambda node: int(node.id), best_cycle_expansion_solution)))
-    # print_result(nodes, best_cycle_expansion_with_regret_solution, best_cycle_expansion_with_regret_result, 'Cycle expansion with regret')
-    # print('Cycle expansion with regret - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_cycle_expansion_with_regret_result, min(cycle_expansion_with_regret_results), np.mean(cycle_expansion_with_regret_results), min(cycle_expansion_with_regret_times), max(cycle_expansion_with_regret_times), np.mean(cycle_expansion_with_regret_times)))
-    # print(list(map(lambda node: int(node.id) , best_cycle_expansion_with_regret_solution)))
-    # print_result(nodes, best_cycle_expansion_with_regret_solution, best_cycle_expansion_with_regret_result,'Random')
-    # print('Random - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_random_result, min(random_results),np.mean(random_results), min(random_times),max(random_times), np.mean(random_times)))
-    # print(list(map(lambda node: int(node.id), best_random_solution)))
+    # lab_2_results()
 
 
 main()
