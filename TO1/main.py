@@ -211,15 +211,32 @@ def print_result(nodes, result_nodes, result, title):
     plt.show()
 
 
-def verify_solution(cycle, result):
-    cycle_values = 0
+def evaluate_solution(cycle):
+    solution_result = 0
     for i in range(0, len(cycle) - 1):
-        cycle_values += cycle[i].gain - distance(cycle[i], cycle[i+1]) * COST_WEIGHT
+        solution_result += cycle[i].gain - distance(cycle[i], cycle[i + 1]) * COST_WEIGHT
+    return solution_result
+
+
+def verify_solution(cycle, result):
+    cycle_values = evaluate_solution(cycle)
 
     if result != cycle_values:
         return result - cycle_values
 
     return 0
+
+
+def remove_node(cycle, node_index):
+    if node_index == 0:
+        prev_node_index = -2
+    else:
+        prev_node_index = node_index - 1
+    next_node_index = node_index + 1
+    distance_gain = distance(cycle[prev_node_index], cycle[node_index]) * COST_WEIGHT + distance(cycle[next_node_index], cycle[node_index]) * COST_WEIGHT
+    node_result = distance_gain - cycle[node_index].gain - distance(cycle[prev_node_index], cycle[next_node_index]) * COST_WEIGHT
+    return node_result
+
 
 def bestRemoveNode(cycle, random_remove=False):
     starting_node = cycle[0]
@@ -231,13 +248,11 @@ def bestRemoveNode(cycle, random_remove=False):
 
     if random_remove:
         i = random.randint(1, len(cycle) - 2)
-        distance_gain = distance(cycle[i - 1], cycle[i]) * COST_WEIGHT + distance(cycle[i + 1], cycle[i]) * COST_WEIGHT
-        node_result = distance_gain - cycle[i].gain - distance(cycle[i - 1], cycle[i + 1]) * COST_WEIGHT
+        node_result = remove_node(cycle, i)
         return cycle[i], node_result
 
     for i in range(1, len(cycle) - 1):
-        distance_gain = distance(cycle[i-1], cycle[i]) * COST_WEIGHT + distance(cycle[i+1], cycle[i]) * COST_WEIGHT
-        node_result = distance_gain - cycle[i].gain - distance(cycle[i-1], cycle[i+1]) * COST_WEIGHT
+        node_result = remove_node(cycle, i)
         if best_node is None or node_result > best_node_result:
             best_node = cycle[i]
             best_node_result = node_result
@@ -271,7 +286,7 @@ def best_edge_swap(cycle):
 
 def findBestLocal(available_nodes, cycle, times):
     start = time.time()
-    next_node, next_node_result, edge = find_nearest_expansion(available_nodes.copy(),cycle.copy())
+    next_node, next_node_result, edge = find_nearest_expansion(available_nodes.copy(), cycle.copy())
     node_to_remove, remove_node_result = bestRemoveNode(cycle.copy())
     new_cycle, swap_nodes_result = best_edge_swap(cycle.copy())
     end = time.time()
@@ -282,10 +297,10 @@ def findBestLocal(available_nodes, cycle, times):
     if results[best_local] < 0:
         return None, None, None, None
     else:
-        if best_local == 0: #add Node
+        if best_local == 0:  # add Node
             cycle.insert(cycle[1::].index(edge[1]) + 1, next_node)
             return cycle, next_node_result, next_node, 1
-        elif best_local == 1: #remove Node
+        elif best_local == 1:  # remove Node
             if node_to_remove == cycle[0]:
                 cycle.remove(node_to_remove)
                 cycle.remove(node_to_remove)
@@ -293,7 +308,7 @@ def findBestLocal(available_nodes, cycle, times):
             else:
                 del cycle[cycle[1::].index(node_to_remove)+1]
             return cycle, remove_node_result, node_to_remove, 2
-        else: #Swap edges
+        else:  # Swap edges
             return new_cycle, swap_nodes_result, None, 3
 
 
@@ -374,14 +389,22 @@ def get_random_neighbour_solution(nodes, cycle, result):
 
 
 def perturbation(cycle, result):
-    #triple random swap nodes
+    # swap 2 nodes, remove random node, swap 2 nodes
     if len(cycle) - 1 > 3:
         new_cycle, delta = node_swap(cycle, True)
         cycle_values = result + delta
+
+        node_to_remove = random.randint(0, len(new_cycle) - 2)
+        cycle_values = cycle_values + remove_node(new_cycle, node_to_remove)
+        if node_to_remove == 0:
+            new_cycle = new_cycle[1:-1]
+            new_cycle += [new_cycle[0]]
+        else:
+            del new_cycle[node_to_remove]
+
         new_cycle, delta = node_swap(new_cycle, True)
         cycle_values = cycle_values + delta
-        new_cycle, delta = node_swap(new_cycle, True)
-        cycle_values = cycle_values + delta
+
         return new_cycle, cycle_values
 
     return cycle, result
@@ -477,12 +500,13 @@ def simulated_annealing(nodes):
                 best_global_solution = best_solution
 
         T = T * alpha
-        #print('temp: ' + str(T))
 
     duration = time.time() - start
     return best_global_solution, best_global_result, duration
 
-flatten = lambda l: [item for sublist in l for item in sublist]
+
+def flatten(list):
+    return [item for sublist in list for item in sublist]
 
 
 def rewrite_cycle_to_start_at(cycle, starting_node):
@@ -503,12 +527,26 @@ def unify_cycles(cycle_1, cycle_2):
             new_cycle_1 = rewrite_cycle_to_start_at(cycle_1, node)
             new_cycle_2 = rewrite_cycle_to_start_at(cycle_2, node)
             return new_cycle_1, new_cycle_2
-    #TODO this might crash
+    return None
+
+
+def find_first_index(sublist, list):
+    for i in range(len(list)):
+        if list[i] == sublist[0]:
+            return i
     return None
 
 
 def is_sublist(list, sublist):
-    return ''.join(map(str, [x.id for x in sublist])) in ''.join(map(str, [x.id for x in list])) or ''.join(map(str, [x.id for x in sublist]))[::-1] in ''.join(map(str, [x.id for x in list]))
+    possible_start = find_first_index(sublist, list)
+    possible_start_for_reverse = find_first_index(sublist[::-1], list)
+    normal_result = False
+    reverse_result = False
+    if possible_start is not None:
+        normal_result = list[possible_start:possible_start + len(sublist)] == sublist
+    if possible_start_for_reverse is not None:
+        reverse_result = list[possible_start_for_reverse:possible_start_for_reverse + len(sublist)] == sublist[::-1]
+    return normal_result or reverse_result
 
 
 def range_is_already_covered(found_ranges, new_range):
@@ -519,13 +557,20 @@ def range_is_already_covered(found_ranges, new_range):
 
 
 def find_common_paths(cycle_1, cycle_2):
-    cycle_1, cycle_2 = unify_cycles(cycle_1, cycle_2)
+    unification_result = unify_cycles(cycle_1, cycle_2)
+
+    if unification_result is None:
+        # this happens when cycles don't have any common node
+        return []
+
+    cycle_1, cycle_2 = unification_result
     common_parts_ranges = []
 
     for starting_index in range(len(cycle_1) - 1):
         for end_index in range(len(cycle_1) - 1, starting_index, -1):
             cycle_1_part = cycle_1[starting_index:end_index]
             new_range = (starting_index, end_index)
+
             if is_sublist(cycle_2, cycle_1_part) and not range_is_already_covered(common_parts_ranges, new_range):
                 common_parts_ranges.append(new_range)
                 break
@@ -564,6 +609,86 @@ def recombine(cycle_1, cycle_2):
     new_cycle = new_cycle + [new_cycle[0]]
 
     return new_cycle
+
+
+def find_worst_solution(solutions):
+    worst = None
+    worst_result = float("inf")
+
+    for solution in solutions:
+        solution_result = evaluate_solution(solution)
+
+        if solution_result < worst_result:
+            worst_result = solution_result
+            worst = solution
+
+    return worst, worst_result
+
+
+def find_best_solution(solutions):
+    best = None
+    best_result = -float("inf")
+
+    for solution in solutions:
+        solution_result = evaluate_solution(solution)
+
+        if solution_result > best_result:
+            best_result = solution_result
+            best = solution
+
+    return best, best_result
+
+
+def check_for_duplicates(cycle):
+    cut = cycle[:-1]
+    for i in range(len(cut)):
+        for next_node in cut[i + 1:]:
+            if cut[i].id == next_node.id:
+                return True
+    return False
+
+
+def solution_already_exists(population, solution):
+    for existing in population:
+        unified = unify_cycles(existing, solution)
+
+        if unified is not None and (unified[0] == unified[1] or unified[0][::-1] == unified[1]):
+            return True
+
+    return False
+
+
+def genetic_algorithm(nodes, stop_time):
+    population = []
+
+    while len(population) < 20:
+        random_solution = generateRandomSolution(nodes.copy())
+        enhanced_random_solution = enhanceSolutionWithLocals(random_solution[0], list(set(nodes) - set(random_solution[0])), random_solution[1])[0]
+
+        if not solution_already_exists(population, enhanced_random_solution):
+            population.append(enhanced_random_solution)
+
+    print("Population generated")
+
+    start_time = time.time()
+    while True:
+        if time.time() - start_time >= stop_time:
+            break
+
+        parent_1 = random.choice(population)
+        parent_2 = random.choice(population)
+
+        child = recombine(parent_1, parent_2)
+
+        enhanced_child, enhanced_child_result, _ = enhanceSolutionWithLocals(child.copy(), list(set(nodes) - set(child)), evaluate_solution(child))
+
+        worst_existing_solution, worst_solution_result = find_worst_solution(population)
+
+        if enhanced_child_result > worst_solution_result and not solution_already_exists(population, enhanced_child):
+            population.remove(worst_existing_solution)
+            population.append(enhanced_child)
+
+    return find_best_solution(population)
 
 
 def lab_3_results():
@@ -629,17 +754,68 @@ def lab_3_results():
     print(list(map(lambda node: int(node.id), best_simulated_annealing_solution)))
 
 
+def lab_4_results():
+    nodes = read_data("./data")
+    multiple_start_times = []
+    multiple_start_results = []
+    best_multiple_start_solution = None
+    best_multiple_start_result = None
+    iterated_ls_results = []
+    best_iterated_ls_solution = None
+    best_iterated_ls_result = None
+    genetic_results = []
+    best_genetic_solution = None
+    best_genetic_result = None
+
+    for i in range(0, 10):
+        print('MultipleStart LS')
+        solution, duration = multiple_start_local_search(nodes.copy())
+        if verify_solution(solution[0], solution[1]) > 1:
+            raise ValueError("Node path verification failed")
+        multiple_start_times.append(duration)
+        multiple_start_results.append(solution[1])
+
+        if best_multiple_start_solution is None or solution[1] > best_multiple_start_result:
+            best_multiple_start_solution = solution[0]
+            best_multiple_start_result = solution[1]
+
+    stop_time = np.mean(multiple_start_times)
+
+    for i in range(0, 10):
+        print('Iterated LS')
+        solution = iterated_local_search(nodes.copy(), stop_time)
+        if verify_solution(solution[0], solution[1]) > 1:
+            raise ValueError("Node path verification failed")
+        iterated_ls_results.append(solution[1])
+        if best_iterated_ls_solution is None or solution[1] > best_iterated_ls_result:
+            best_iterated_ls_solution = solution[0]
+            best_iterated_ls_result = solution[1]
+
+    for i in range(0, 10):
+        print('Genetic')
+        solution = genetic_algorithm(nodes.copy(), stop_time)
+        if verify_solution(solution[0], solution[1]) > 1:
+            raise ValueError("Node path verification failed")
+        genetic_results.append(solution[1])
+        if best_genetic_solution is None or solution[1] > best_genetic_result:
+            best_genetic_solution = solution[0]
+            best_genetic_result = solution[1]
+
+    print_result(nodes, best_multiple_start_solution, best_multiple_start_result, 'MultipleStart LS')
+    print('MultipleStart LS - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_multiple_start_result, min(multiple_start_results), np.mean(multiple_start_results), min(multiple_start_times), max(multiple_start_times), np.mean(multiple_start_times)))
+    print(list(map(lambda node: int(node.id), best_multiple_start_solution)))
+
+    print_result(nodes, best_iterated_ls_solution, best_iterated_ls_result, 'Iterated LS')
+    print('Iterated LS - best: {}, worst: {}, average: {}. Stop time: {}'.format(best_iterated_ls_result, min(iterated_ls_results), np.mean(iterated_ls_results), stop_time))
+    print(list(map(lambda node: int(node.id), best_iterated_ls_solution)))
+
+    print_result(nodes, best_genetic_solution, best_genetic_result, 'Genetic')
+    print('Genetic - best: {}, worst: {}, average: {}. Stop time: {}'.format(best_genetic_result, min(genetic_results), np.mean(genetic_results), stop_time))
+    print(list(map(lambda node: int(node.id), best_genetic_solution)))
+
+
 def main():
-    # node_0 = Node(0)
-    # node_1 = Node(1)
-    # node_2 = Node(2)
-    # node_3 = Node(3)
-    # node_4 = Node(4)
-    # cycle_1 = [node_0, node_1, node_2, node_4, node_0]
-    # cycle_2 = [node_1, node_4, node_3, node_2, node_1]
-    # 
-    # result = recombine(cycle_1, cycle_2)
-    # print([x.id for x in result])
+    lab_4_results()
     
     # lab_3_results()
 
@@ -711,7 +887,6 @@ def main():
     # print_result(nodes, best_cycle_expansion_with_regret_solution, best_cycle_expansion_with_regret_result,'Random')
     # print('Random - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_random_result, min(random_results),np.mean(random_results), min(random_times),max(random_times), np.mean(random_times)))
     # print(list(map(lambda node: int(node.id), best_random_solution)))
-
 
 
 main()
