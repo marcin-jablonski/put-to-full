@@ -331,14 +331,13 @@ def enhanceSolutionWithLocals(cycle, availableNodes, cycle_values):
     return enhanced_cycle, cycle_values, times
 
 
-def generateRandomSolution(nodes):
-    no_of_nodes = randint(10, 98)
-    cycle = nodes[0:no_of_nodes]
-    random.shuffle(cycle)
+def generate_random_solution(nodes):
+    no_of_nodes = randint(1, len(nodes))
+    shuffled_nodes = nodes.copy()
+    random.shuffle(shuffled_nodes)
+    cycle = shuffled_nodes[0:no_of_nodes]
     cycle.append(cycle[0])
-    cycle_values = 0
-    for i in range(0, len(cycle) - 1):
-        cycle_values += cycle[i].gain - distance(cycle[i], cycle[i+1]) * COST_WEIGHT
+    cycle_values = evaluate_solution(cycle)
 
     return cycle, cycle_values
 
@@ -348,7 +347,7 @@ def multiple_start_local_search(nodes):
     start = time.time()
     for i in range(0, 100):
         print('MS LS completed: ' + str(100*i/100)+" %")
-        random_solution = generateRandomSolution(nodes.copy())
+        random_solution = generate_random_solution(nodes.copy())
         enhanced_solution = enhanceSolutionWithLocals(random_solution[0].copy(), list(set(nodes.copy()) - set(random_solution[0])), random_solution[1])
         if best_solution is None or enhanced_solution[1] > best_solution[1]:
             best_solution = enhanced_solution
@@ -411,7 +410,7 @@ def perturbation(cycle, result):
 
 
 def iterated_local_search(nodes, stop_time):
-    best_solution = generateRandomSolution(nodes.copy())
+    best_solution = generate_random_solution(nodes.copy())
     best_solution = enhanceSolutionWithLocals(best_solution[0].copy(), list(set(nodes.copy()) - set(best_solution[0])), best_solution[1])
     start = time.time()
     while True:
@@ -475,7 +474,7 @@ def simulated_annealing(nodes):
     Tk = 1
     alpha = 0.98
 
-    random_solution = generateRandomSolution(nodes.copy())
+    random_solution = generate_random_solution(nodes.copy())
     nodes = list(set(nodes) - set(random_solution[0]))
     best_solution = random_solution[0]
     best_result = random_solution[1]
@@ -662,7 +661,7 @@ def genetic_algorithm(nodes, stop_time):
     population = []
 
     while len(population) < 20:
-        random_solution = generateRandomSolution(nodes.copy())
+        random_solution = generate_random_solution(nodes.copy())
         enhanced_random_solution = enhanceSolutionWithLocals(random_solution[0], list(set(nodes) - set(random_solution[0])), random_solution[1])[0]
 
         if not solution_already_exists(population, enhanced_random_solution):
@@ -750,30 +749,64 @@ def generate_chart_data(solutions):
         average_common_nodes_percentage = np.mean(common_nodes_percentages)
         average_common_edges_percentage = np.mean(common_edges_percentages)
 
-        x.append(solution_value)
-        best_common_nodes_percentages.append(best_common_nodes_percentage)
-        best_common_edges_percentages.append(best_common_edges_percentage)
-        average_common_nodes_percentages.append(average_common_nodes_percentage)
-        average_common_edges_percentages.append(average_common_edges_percentage)
+        if solution_value in x:
+            ind = x.index(solution_value)
+            best_common_nodes_percentages[ind] = np.mean(
+                [best_common_nodes_percentages[ind], best_common_nodes_percentage])
+            best_common_edges_percentages[ind] = np.mean(
+                [best_common_edges_percentages[ind], best_common_edges_percentage])
+            average_common_nodes_percentages[ind] = np.mean(
+                [average_common_nodes_percentages[ind], average_common_nodes_percentage])
+            average_common_edges_percentages[ind] = np.mean(
+                [average_common_edges_percentages[ind], average_common_edges_percentage])
+        else:
+            x.append(solution_value)
+            best_common_nodes_percentages.append(best_common_nodes_percentage)
+            best_common_edges_percentages.append(best_common_edges_percentage)
+            average_common_nodes_percentages.append(average_common_nodes_percentage)
+            average_common_edges_percentages.append(average_common_edges_percentage)
 
     return x, average_common_nodes_percentages, average_common_edges_percentages, best_common_nodes_percentages, best_common_edges_percentages
 
 
+def plot_with_regression_line(x, y, title):
+    fit = np.polyfit(x, y, 1)
+    fit_fn = np.poly1d(fit)
+    plt.plot(x, y, 'bo', x, fit_fn(x), '-g')
+    plt.xlim(min([0, min(x)]), max(x))
+    plt.ylim(min([0, min(y)]), max(y))
+    plt.title(title)
+    plt.show()
+
+
+def show_charts(chart_data):
+    x, average_common_nodes_percentages, average_common_edges_percentages, best_common_nodes_percentages, best_common_edges_percentages = chart_data
+
+    plot_with_regression_line(x, average_common_nodes_percentages, "Average common nodes")
+    plot_with_regression_line(x, best_common_nodes_percentages, "Best common node")
+    plot_with_regression_line(x, average_common_edges_percentages, "Average common edges")
+    plot_with_regression_line(x, best_common_edges_percentages, "Best common edges")
+
+
 def lab_5_results():
-    node1 = Node(0, 0, 0, 10)
-    node2 = Node(1, 10, 15, 8)
-    node3 = Node(2, -5, 8, 7)
-    node4 = Node(3, -12, 20, 15)
-    node5 = Node(4, 1, 4, 4)
-    node6 = Node(5, 2, 7, 3)
+    nodes = read_data("./data")
+    solutions = []
+    no_of_solutions = 1000
+    print("Generating solutions...")
 
-    sol_1 = [node1, node2, node3, node1]
-    sol_2 = [node4, node5, node1, node3, node4]
-    sol_3 = [node6, node4, node5, node6]
+    while True:
+        random_sol = generate_random_solution(nodes)
+        ls_enhanced, _, _ = enhanceSolutionWithLocals(random_sol[0], list(set(nodes) - set(random_sol[0])), random_sol[1])
+        if not solution_already_exists(solutions, ls_enhanced):
+            solutions.append(ls_enhanced)
+            print("Generated {} of {}".format(len(solutions), no_of_solutions))
 
-    solutions = [sol_1, sol_2]
+        if len(solutions) >= no_of_solutions:
+            break
 
-    print(generate_chart_data(solutions))
+    chart_data = generate_chart_data(solutions)
+
+    show_charts(chart_data)
 
 
 def lab_4_results():
@@ -948,7 +981,7 @@ def lab_2_results():
             best_cycle_expansion_with_regret_result = locals_solution[1]
 
         print('RAND')
-        solution = generateRandomSolution(nodes.copy())
+        solution = generate_random_solution(nodes.copy())
         locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
         random_results.append(locals_solution[1])
         random_times.append(sum(locals_solution[2]))
