@@ -238,7 +238,7 @@ def remove_node(cycle, node_index):
     return node_result
 
 
-def bestRemoveNode(cycle, random_remove=False):
+def best_remove_node(cycle, random_remove=False):
     starting_node = cycle[0]
     starting_gain = distance(cycle[0], cycle[1]) * COST_WEIGHT + distance(cycle[0], cycle[-2]) * COST_WEIGHT
     starting_result = starting_gain - cycle[0].gain - distance(cycle[-2], cycle[1]) * COST_WEIGHT
@@ -284,14 +284,16 @@ def best_edge_swap(cycle):
     return best_swapped_cycle, best_swap_result
 
 
-def findBestLocal(available_nodes, cycle, times):
+def find_best_local(available_nodes, cycle, times):
     start = time.time()
     next_node, next_node_result, edge = find_nearest_expansion(available_nodes.copy(), cycle.copy())
-    node_to_remove, remove_node_result = bestRemoveNode(cycle.copy())
+    node_to_remove, remove_node_result = best_remove_node(cycle.copy())
     new_cycle, swap_nodes_result = best_edge_swap(cycle.copy())
     end = time.time()
     times.append(end-start)
     results = [next_node_result, remove_node_result, swap_nodes_result]
+    if None in results:
+        print(results)
     best_local = np.argmax(results)
 
     if results[best_local] < 0:
@@ -312,12 +314,12 @@ def findBestLocal(available_nodes, cycle, times):
             return new_cycle, swap_nodes_result, None, 3
 
 
-def enhanceSolutionWithLocals(cycle, availableNodes, cycle_values):
+def enhance_solution_with_locals(cycle, available_nodes, cycle_values):
     enhanced_cycle = cycle
-    nodes = availableNodes
+    nodes = available_nodes
     times = []
     while True:
-        new_cycle, delta, new_node, local_type = findBestLocal(nodes, enhanced_cycle, times)
+        new_cycle, delta, new_node, local_type = find_best_local(nodes, enhanced_cycle, times)
         if new_cycle is not None:
             enhanced_cycle = new_cycle
             cycle_values += delta
@@ -348,7 +350,7 @@ def multiple_start_local_search(nodes):
     for i in range(0, 100):
         print('MS LS completed: ' + str(100*i/100)+" %")
         random_solution = generate_random_solution(nodes.copy())
-        enhanced_solution = enhanceSolutionWithLocals(random_solution[0].copy(), list(set(nodes.copy()) - set(random_solution[0])), random_solution[1])
+        enhanced_solution = enhance_solution_with_locals(random_solution[0].copy(), list(set(nodes.copy()) - set(random_solution[0])), random_solution[1])
         if best_solution is None or enhanced_solution[1] > best_solution[1]:
             best_solution = enhanced_solution
     end = time.time()
@@ -379,7 +381,7 @@ def get_random_neighbour_solution(nodes, cycle, result):
         else:
             # remove node
             if len(cycle) - 1 > 1:
-                node_to_remove, remove_node_result = bestRemoveNode(cycle, True)
+                node_to_remove, remove_node_result = best_remove_node(cycle, True)
                 del cycle[cycle[1::].index(node_to_remove) + 1]
                 cycle_values += remove_node_result
                 decision_made = True
@@ -411,7 +413,7 @@ def perturbation(cycle, result):
 
 def iterated_local_search(nodes, stop_time):
     best_solution = generate_random_solution(nodes.copy())
-    best_solution = enhanceSolutionWithLocals(best_solution[0].copy(), list(set(nodes.copy()) - set(best_solution[0])), best_solution[1])
+    best_solution = enhance_solution_with_locals(best_solution[0].copy(), list(set(nodes.copy()) - set(best_solution[0])), best_solution[1])
     start = time.time()
     while True:
         enhanced_solution = perturbation(best_solution[0].copy(), best_solution[1])
@@ -443,7 +445,7 @@ def node_swap(cycle, random_swap=False):
 
     for i in range(1, len(cycle) - 3):
         for j in range(i + 1, len(cycle) - 2):
-            swaped_cycle, swap_result = calculate_node_swap(cycle, i,j)
+            swaped_cycle, swap_result = calculate_node_swap(cycle, i, j)
 
             if best_swap_result is None or best_swap_result < swap_result:
                 best_swap_result = swap_result
@@ -662,7 +664,7 @@ def genetic_algorithm(nodes, stop_time):
 
     while len(population) < 20:
         random_solution = generate_random_solution(nodes.copy())
-        enhanced_random_solution = enhanceSolutionWithLocals(random_solution[0], list(set(nodes) - set(random_solution[0])), random_solution[1])[0]
+        enhanced_random_solution = enhance_solution_with_locals(random_solution[0], list(set(nodes) - set(random_solution[0])), random_solution[1])[0]
 
         if not solution_already_exists(population, enhanced_random_solution):
             population.append(enhanced_random_solution)
@@ -679,7 +681,7 @@ def genetic_algorithm(nodes, stop_time):
 
         child = recombine(parent_1, parent_2)
 
-        enhanced_child, enhanced_child_result, _ = enhanceSolutionWithLocals(child.copy(), list(set(nodes) - set(child)), evaluate_solution(child))
+        enhanced_child, enhanced_child_result, _ = enhance_solution_with_locals(child.copy(), list(set(nodes) - set(child)), evaluate_solution(child))
 
         worst_existing_solution, worst_solution_result = find_worst_solution(population)
 
@@ -796,7 +798,7 @@ def lab_5_results():
 
     while True:
         random_sol = generate_random_solution(nodes)
-        ls_enhanced, _, _ = enhanceSolutionWithLocals(random_sol[0], list(set(nodes) - set(random_sol[0])), random_sol[1])
+        ls_enhanced, _, _ = enhance_solution_with_locals(random_sol[0], list(set(nodes) - set(random_sol[0])), random_sol[1])
         if not solution_already_exists(solutions, ls_enhanced):
             solutions.append(ls_enhanced)
             print("Generated {} of {}".format(len(solutions), no_of_solutions))
@@ -896,7 +898,6 @@ def lab_3_results():
             best_multiple_start_result = solution[1]
 
     stop_time = np.mean(multiple_start_times)
-    #stop_time = 6
 
     for i in range(0, 10):
         print('Iterated LS')
@@ -955,7 +956,7 @@ def lab_2_results():
         print(starting_index)
         print('NN')
         solution = nearest_neighbour(nodes.copy(), starting_index)
-        locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
+        locals_solution = enhance_solution_with_locals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
         nearest_neighbour_results.append(locals_solution[1])
         nearest_neighbour_times.append(sum(locals_solution[2]))
         if best_nearest_neighbour_solution is None or locals_solution[1] > best_nearest_neighbour_result:
@@ -964,7 +965,7 @@ def lab_2_results():
 
         print('CE')
         solution = cycle_expansion(nodes.copy(), starting_index)
-        locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
+        locals_solution = enhance_solution_with_locals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
         cycle_expansion_results.append(locals_solution[1])
         cycle_expansion_times.append(sum(locals_solution[2]))
         if best_cycle_expansion_solution is None or locals_solution[1] > best_cycle_expansion_result:
@@ -973,7 +974,7 @@ def lab_2_results():
 
         print('CE+R')
         solution = cycle_expansion_with_regret(nodes.copy(), starting_index)
-        locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
+        locals_solution = enhance_solution_with_locals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
         cycle_expansion_with_regret_results.append(locals_solution[1])
         cycle_expansion_with_regret_times.append(sum(locals_solution[2]))
         if best_cycle_expansion_with_regret_solution is None or locals_solution[1] > best_cycle_expansion_with_regret_result:
@@ -982,7 +983,7 @@ def lab_2_results():
 
         print('RAND')
         solution = generate_random_solution(nodes.copy())
-        locals_solution = enhanceSolutionWithLocals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
+        locals_solution = enhance_solution_with_locals(solution[0], list(set(nodes.copy()) - set(solution[0])), solution[1])
         random_results.append(locals_solution[1])
         random_times.append(sum(locals_solution[2]))
         if best_random_solution is None or locals_solution[1] > best_random_result:
@@ -997,7 +998,7 @@ def lab_2_results():
     print(list(map(lambda node: int(node.id), best_cycle_expansion_solution)))
     print_result(nodes, best_cycle_expansion_with_regret_solution, best_cycle_expansion_with_regret_result, 'Cycle expansion with regret')
     print('Cycle expansion with regret - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_cycle_expansion_with_regret_result, min(cycle_expansion_with_regret_results), np.mean(cycle_expansion_with_regret_results), min(cycle_expansion_with_regret_times), max(cycle_expansion_with_regret_times), np.mean(cycle_expansion_with_regret_times)))
-    print(list(map(lambda node: int(node.id) , best_cycle_expansion_with_regret_solution)))
+    print(list(map(lambda node: int(node.id), best_cycle_expansion_with_regret_solution)))
     print_result(nodes, best_cycle_expansion_with_regret_solution, best_cycle_expansion_with_regret_result,'Random')
     print('Random - best: {}, worst: {}, average: {}. Times: min {}, max {}, avg {}'.format(best_random_result, min(random_results),np.mean(random_results), min(random_times),max(random_times), np.mean(random_times)))
     print(list(map(lambda node: int(node.id), best_random_solution)))
