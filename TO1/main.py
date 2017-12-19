@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import time
 import random
 from random import randint
+from scipy.optimize import curve_fit
 COST_WEIGHT = 6
 
 
@@ -86,7 +87,7 @@ def nearest_neighbour(nodes, starting_node_index=0):
 
 def find_nearest_expansion(available_nodes, cycle, random_expansion=False):
     best_node = None
-    best_node_result = None
+    best_node_result = -float("inf")
     best_edge = None
 
     if random_expansion:
@@ -292,8 +293,6 @@ def find_best_local(available_nodes, cycle, times):
     end = time.time()
     times.append(end-start)
     results = [next_node_result, remove_node_result, swap_nodes_result]
-    if None in results:
-        print(results)
     best_local = np.argmax(results)
 
     if results[best_local] < 0:
@@ -734,8 +733,8 @@ def generate_chart_data(solutions):
     for sol_i, solution in enumerate(solutions):
         solution_value = evaluate_solution(solution)
         
-        best_common_nodes_percentage = percentage_of_common_nodes(solution, best_solution)
-        best_common_edges_percentage = percentage_of_common_edges(solution, best_solution)
+        best_common_nodes_percentage = percentage_of_common_nodes(solution, best_solution) * 100
+        best_common_edges_percentage = percentage_of_common_edges(solution, best_solution) * 100
 
         common_nodes_percentages = []
         common_edges_percentages = []
@@ -748,8 +747,8 @@ def generate_chart_data(solutions):
                 common_nodes_percentages.append(another_solution_common_nodes_percentage)
                 common_edges_percentages.append(another_solution_common_edges_percentage)
 
-        average_common_nodes_percentage = np.mean(common_nodes_percentages)
-        average_common_edges_percentage = np.mean(common_edges_percentages)
+        average_common_nodes_percentage = np.mean(common_nodes_percentages) * 100
+        average_common_edges_percentage = np.mean(common_edges_percentages) * 100
 
         if solution_value in x:
             ind = x.index(solution_value)
@@ -771,12 +770,21 @@ def generate_chart_data(solutions):
     return x, average_common_nodes_percentages, average_common_edges_percentages, best_common_nodes_percentages, best_common_edges_percentages
 
 
+def log_fun(x, a, b):
+    return a * np.asarray(x) + b
+
+
 def plot_with_regression_line(x, y, title):
-    fit = np.polyfit(x, y, 1)
-    fit_fn = np.poly1d(fit)
-    plt.plot(x, y, 'bo', x, fit_fn(x), '-g')
+    popt, _ = curve_fit(log_fun, x, y)
+    resulting_output = log_fun(x, *popt)
+    corr_coeff = np.corrcoef(y, resulting_output)[0][1]
+    print("{} correlation: {}".format(title, corr_coeff))
+    x_range = range(int(min([0, min(x)])), int(max(x)))
+    plt.plot(x, y, 'bo', x_range, log_fun(x_range, *popt), '-g')
     plt.xlim(min([0, min(x)]), max(x))
+    plt.xlabel("Solution value")
     plt.ylim(min([0, min(y)]), max(y))
+    plt.ylabel("% of correspondence")
     plt.title(title)
     plt.show()
 
@@ -784,10 +792,10 @@ def plot_with_regression_line(x, y, title):
 def show_charts(chart_data):
     x, average_common_nodes_percentages, average_common_edges_percentages, best_common_nodes_percentages, best_common_edges_percentages = chart_data
 
-    plot_with_regression_line(x, average_common_nodes_percentages, "Average common nodes")
-    plot_with_regression_line(x, best_common_nodes_percentages, "Best common node")
-    plot_with_regression_line(x, average_common_edges_percentages, "Average common edges")
-    plot_with_regression_line(x, best_common_edges_percentages, "Best common edges")
+    plot_with_regression_line(x, average_common_nodes_percentages, "Average nodes correspondence")
+    plot_with_regression_line(x, best_common_nodes_percentages, "Nodes correspondence with best solution")
+    plot_with_regression_line(x, average_common_edges_percentages, "Average edges correspondence")
+    plot_with_regression_line(x, best_common_edges_percentages, "Edges correspondence with best solution")
 
 
 def lab_5_results():
