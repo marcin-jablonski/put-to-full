@@ -1,3 +1,3 @@
-# put-to-full
+# put-to-heuristics
 
 Optimalization techniques laboratories projects
